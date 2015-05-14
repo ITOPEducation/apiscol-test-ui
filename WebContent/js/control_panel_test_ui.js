@@ -1,11 +1,10 @@
-var readHost = "http://localhost:8080";
-var host = "https://localhost:8443";
+var readHost = "http://apiscol:8080";
+var host = "http://apiscol:8080";
 var editUrl = host + "/edit";
 var metaMaintenanceUrl = editUrl + "/maintenance/meta";
 var transferUrl = editUrl + "/transfer";
 var urlParsingUrl = editUrl + "/url_parsing";
 var editResourceUrl = editUrl + "/resource";
-var importPackageUrl = editUrl + "/import";
 var contentMaintenanceUrl = editUrl + "/maintenance/content";
 var contentUrl = host + "/content";
 var resourcesUrl = contentUrl + "/resource";
@@ -22,9 +21,7 @@ var awaitedUrlParsingReports = new Array();
 var urlParsingCurrentStates = new Object();
 var fileTransferCurrentStates = new Object();
 var editMetadataUrl = editUrl + "/meta";
-var editManifestUrl = editUrl + "/manifest";
 var metadataUrl = host + "/meta";
-var packUrl = host + "/pack/manifest";
 var metadataSuggestionsUrl = metadataUrl + "/suggestions";
 var metadataSpellcheckUrl = metadataSuggestionsUrl + "?query=";
 var metadataQueryUrl = metadataUrl + "?query=";
@@ -32,14 +29,11 @@ var uiblocked = false;
 var staticFilters, dynamicFilters;
 var facetGroupRegistry;
 var selectedMetadataId = "";
-var selectedManifestId = "";
 var selectedMetadataVersion = "";
-var selectedManifestVersion = "";
 var ACTION = {
 	ASSIGN_PROPERTIES_TO_RESOURCE : "assign metadata",
 	CREATE_NEW_RESOURCE : "create new resource"
 }
-var waitingForAuthentication = false;
 var pageIsBuilt = false;
 var nonce;
 $(document).ready(initialize);
@@ -47,18 +41,8 @@ $(document).ready(initialize);
 function initialize() {
 	$("#metadata-popup").hide();
 	$("#wait_animation").hide();
-	if (!waitingForAuthentication) {
-		$(".container").hide();
-		waitForAuthentication();
-	}
-	if (nonce) {
-		showIdentificationFields(false);
-		$(".container").show();
+	$(".container").show();
 
-	} else {
-		showIdentificationFields(true);
-		return;
-	}
 	if (pageIsBuilt)
 		return;
 	pageIsBuilt = true;
@@ -157,8 +141,6 @@ function initialize() {
 	requestRessourceList();
 	initializeMetaData();
 	initializeThumbs();
-	handleManifestUpload();
-	requestManifestList();
 }
 function handleKeyUpInRequestField(event) {
 	if (uiblocked)
@@ -205,8 +187,6 @@ function handleFileUpload() {
 									type : 'POST',
 									headers : {
 										accept : "application/atom+xml",
-										"If-Match" : etag,
-										authorization : nonce
 									},
 									xhr : function() {
 										myXhr = $.ajaxSettings.xhr();
@@ -220,18 +200,14 @@ function handleFileUpload() {
 										return myXhr;
 									},
 									success : function(data, textStatus, jqXHR) {
-										nonce = extractAuthenticationHeader(response);
 										handleFileUploadSuccess(data,
 												textStatus, jqXHR);
 
 									},
 									error : function(jqXHR, textStatus,
 											errorThrown) {
-										nonce = extractAuthenticationHeader(response);
 										switch (jqXHR.status) {
-										case 403:
-											showIdentificationFields(true);
-											break;
+
 										case 422:
 											prettyAlert(
 													"Erreur",
@@ -285,19 +261,13 @@ function scanForFileTransferReports() {
 		type : "GET",
 		url : transferReportUrl,
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
-			if (msg.status == 403)
-				showIdentificationFields(true);
-			prettyAlert("Pb authorisation", msg.responseText, "error")
+
+			prettyAlert("Erreur", msg.responseText, "error")
 		},
 		success : function(result) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			handleTransferReport(result);
 		}
 	});
@@ -401,7 +371,7 @@ function populateSuggestionsList(xmlData) {
 		if ($.inArray(suggestion, suggestions) == -1)
 			suggestions.push(suggestion);
 	});
-	for ( var int = 0; int < suggestions.length; int++) {
+	for (var int = 0; int < suggestions.length; int++) {
 		addItemToSuggestionsList(suggestions[int]);
 		if (int == suggestions.length - 1)
 			$("#suggestions", $("#resources-container")).append(" ?")
@@ -495,7 +465,7 @@ function populateResourcesList(xmlData) {
 function getResourceListItemByResourceId(resid) {
 	var items = $("#resources_list", $("#resources-container")).find("li");
 	var textItem;
-	for ( var i = 0; i < items.length; i++) {
+	for (var i = 0; i < items.length; i++) {
 		textItem = $(items[i]).attr("data-resid");
 		if (textItem == resid)
 			return $(items[i]);
@@ -573,7 +543,7 @@ function addItemToResourcesList(resId, metaId, type, version, atomLink,
 
 	if ($hits && $hits.length > 0) {
 
-		for ( var i = 0; i < $hits.length; i++) {
+		for (var i = 0; i < $hits.length; i++) {
 			var $hitNode = $(document.createElement("p"));
 			$hitNode.addClass("snippet-presentation");
 			var $hit = $($hits[i]);
@@ -618,21 +588,14 @@ function handleResourceDeleteButtonClick(event) {
 		url : url,
 		headers : {
 			accept : "application/xml",
-			"If-Match" : etag,
-			authorization : nonce
+			"If-Match" : etag
 		},
 		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			switch (jqXHR.status) {
-			case 403:
-				showIdentificationFields(true);
-				prettyAlert("Pb autorisation", msg.responseText, "error");
-				break;
 			default:
 				prettyAlert(
 						"Une erreur a empêché la suppression de la ressource.",
-						msg.responseText, "error")
+						jqXHR.responseText, "error")
 				uiblocked = false;
 				requestRessourceList();
 				break;
@@ -641,8 +604,6 @@ function handleResourceDeleteButtonClick(event) {
 		},
 		success : function(data) {
 			wait(false);
-			nonce = extractAuthenticationHeader(response);
-			;
 			requestRessourceList();
 		}
 	});
@@ -825,16 +786,11 @@ function handleFileDeleteButtonClick(event) {
 				url : url,
 				headers : {
 					accept : "application/xml",
-					"If-Match" : etag,
-					authorization : nonce
+					"If-Match" : etag
 				},
 				error : function(jqXHR, textStatus, errorThrown) {
-					nonce = extractAuthenticationHeader(response);
-					;
+
 					switch (jqXHR.status) {
-					case 403:
-						showIdentificationFields(true);
-						break;
 					case 410:
 						alert("Le fichier n'existe plus dans Apiscol, impossible de le supprimer.");
 						uiblocked = false;
@@ -855,8 +811,6 @@ function handleFileDeleteButtonClick(event) {
 				},
 				success : function(data) {
 					wait(false);
-					nonce = extractAuthenticationHeader(response);
-					;
 					requestRessourceList();
 				}
 			});
@@ -881,16 +835,10 @@ function sendPutRequest(resourceId, data) {
 		data : data,
 		headers : {
 			accept : "application/xml",
-			"If-Match" : etag,
-			authorization : nonce
+			"If-Match" : etag
 		},
 		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			switch (jqXHR.status) {
-			case 403:
-				showIdentificationFields(true);
-				break;
 			case 422:
 				alert("Impossible d'effectuer cette opération :" + textStatus);
 				uiblocked = false;
@@ -906,8 +854,6 @@ function sendPutRequest(resourceId, data) {
 		},
 		success : function(result) {
 			wait(false);
-			nonce = extractAuthenticationHeader(response);
-			;
 			requestRessourceList();
 		}
 	});
@@ -935,20 +881,13 @@ function requestVoidResourceCreation(mdid, type) {
 		url : editResourceUrl,
 		data : 'mdid=' + mdid + "&type=" + type,
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
 			prettyAlert("Erreur", msg.responseText, "error");
-			nonce = extractAuthenticationHeader(response);
-			;
-			if (msg.status == 403)
-				showIdentificationFields(true);
 		},
 		success : function(data) {
 			wait(false);
-			nonce = extractAuthenticationHeader(response);
-			;
 			currentResourceId = reduceId($(data).find('id').text());
 			requestRessourceList();
 		}
@@ -960,21 +899,14 @@ function handleOptimizeButtonClick() {
 		type : "POST",
 		url : contentMaintenanceUrl + "/optimization",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			prettyAlert("Erreur", "Echec de la requête d'optimisation :" + msg,
 					"error");
-			if (msg.status == 403)
-				showIdentificationFields(true);
 		},
 		success : function() {
 			wait(false);
-			nonce = extractAuthenticationHeader(response);
-			;
 			prettyAlert("Succès", "La requête d'optimisation a réussi");
 		}
 	});
@@ -984,22 +916,15 @@ function handleDeleteAllButtonClick(mdid, type) {
 		type : "POST",
 		url : contentMaintenanceUrl + "/deletion",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			prettyAlert("Erreur", "Echec de la requête de vidage  :" + msg,
 					"error");
-			if (msg.status == 403)
-				showIdentificationFields(true);
 			triggerRequest();
 		},
 		success : function() {
 			prettyAlert("Succès", "La requête de vidage a réussi");
-			nonce = extractAuthenticationHeader(response);
-			;
 			triggerRequest();
 		}
 	});
@@ -1009,22 +934,15 @@ function handleRecoveryButtonClick(mdid, type) {
 		type : "POST",
 		url : contentMaintenanceUrl + "/recovery",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			prettyAlert("Erreur", "Echec de la requête de restauration  :"
 					+ msg, "error");
-			if (msg.status == 403)
-				showIdentificationFields(true);
 			triggerRequest();
 		},
 		success : function() {
 			prettyAlert("Succès", "La requête de restauration a réussi");
-			nonce = extractAuthenticationHeader(response);
-			;
 			triggerRequest();
 		}
 	});
@@ -1036,22 +954,16 @@ function handleUpdateLinksButtonClick() {
 				type : "POST",
 				url : contentMaintenanceUrl + "/link_update_process",
 				headers : {
-					accept : "application/atom+xml",
-					authorization : nonce
+					accept : "application/atom+xml"
 				},
 				error : function(msg) {
-					nonce = extractAuthenticationHeader(response);
-					;
+
 					prettyAlert("Erreur",
 							"Echec de la requête de rafraichissement des liens :"
 									+ msg, "error");
-					if (msg.status == 403)
-						showIdentificationFields(true);
 				},
 				success : function(data) {
 					wait(false);
-					nonce = extractAuthenticationHeader(response);
-					;
 					scanForLinkUpdateReports();
 				}
 			});
@@ -1184,20 +1096,15 @@ function handleKeyUpInUrlField(event) {
 		url : encodeURI(url),
 		headers : {
 			accept : "application/xml",
-			"If-Match" : etag,
-			authorization : nonce
+			"If-Match" : etag
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			if (msg.status == 403)
 				showIdentificationFields(true);
 			prettyAlert("Erreur", msg.responseText, "error");
 		},
 		success : function(result) {
 			wait(false);
-			nonce = extractAuthenticationHeader(response);
-			;
 			urlParsingRequestCallBack(result);
 		}
 	});
@@ -1225,18 +1132,12 @@ function scanForUrlParsingReports() {
 		type : "GET",
 		url : urlParsingUrl,
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			if (msg.status == 403)
-				showIdentificationFields(true);
 			prettyAlert("Erreur", msg.responseText, "error");
 		},
 		success : function(result) {
-			nonce = extractAuthenticationHeader(response);
-			;
 			handleUrlParsing(result);
 
 		}
@@ -1304,36 +1205,6 @@ function prettyAlert(title, message, style) {
 		autoHide : style != "error",
 		autoHideDelay : 1000
 	});
-}
-function waitForAuthentication() {
-	$("#submit").click(
-			function() {
-				var response = $.ajax({
-					type : "POST",
-					url : editUrl,
-					error : function(msg) {
-						nonce = extractAuthenticationHeader(response);
-						;
-						prettyAlert("Erreur", "Echec de l'authentification  :"
-								+ msg, "error");
-					},
-					success : function(data) {
-						prettyAlert("Succès", "Authentification réussie");
-						nonce = extractAuthenticationHeader(response);
-						;
-						initialize();
-					},
-					headers : {
-						accept : "application/xml",
-						"Authorization" : $("#login").val() + $("#pass").val()
-					},
-				});
-			});
-	waitingForAuthentication = true;
-}
-function showIdentificationFields(bool) {
-	$("body>div.auth").toggle(bool);
-	$("body>div:not(.auth)").toggle(!bool);
 }
 
 var index = {
@@ -1448,8 +1319,7 @@ function _postNewMetadataFile() {
 				url : editMetadataUrl,
 				type : 'POST',
 				headers : {
-					accept : "application/atom+xml",
-					authorization : nonce
+					accept : "application/atom+xml"
 				},
 				xhr : function() { // custom xhr
 					myXhr = $.ajaxSettings.xhr();
@@ -1461,13 +1331,9 @@ function _postNewMetadataFile() {
 					return myXhr;
 				},
 				success : function() {
-					nonce = extractAuthenticationHeader(response);
-					;
 					_handleFileUploadSuccess();
 				},
 				error : function(jqXHR, textStatus, errorThrown) {
-					nonce = extractAuthenticationHeader(response);
-					;
 					switch (jqXHR.status) {
 					case 422:
 						alert("Un fichier du même nom est déjà présent ou en cours de transmission vers cette ressource.");
@@ -1499,8 +1365,7 @@ function _putMetataDataFileIntoSelectedResource() {
 				type : 'PUT',
 				headers : {
 					accept : "application/atom+xml",
-					"If-Match" : etag,
-					authorization : nonce
+					"If-Match" : etag
 				},
 				xhr : function() { // custom xhr
 					myXhr = $.ajaxSettings.xhr();
@@ -1512,23 +1377,15 @@ function _putMetataDataFileIntoSelectedResource() {
 					return myXhr;
 				},
 				success : function(data, textStatus, jqXHR) {
-					nonce = extractAuthenticationHeader(response);
-					;
 					_handleFileUploadSuccess(data, textStatus, jqXHR);
 				},
 				error : function(jqXHR, textStatus, errorThrown) {
-					nonce = extractAuthenticationHeader(response);
-					;
+
 					switch (jqXHR.status) {
 					case 422:
 						alert("Un fichier du même nom est déjà présent ou en cours de transmission vers cette ressource.");
 						uiblocked = false;
 						requestRessourceList();
-						break;
-					case 403:
-						alert("Pb authentification.");
-						uiblocked = false;
-						showIdentificationFields(true);
 						break;
 					default:
 						alert("Une erreur a empêché l'ajout du fichier.");
@@ -1597,7 +1454,7 @@ function submitMetadataSearchQuery(query) {
 }
 function encodeAsJsonTable(table) {
 	var encoding = "[";
-	for ( var int = 0; int < table.length; int++) {
+	for (var int = 0; int < table.length; int++) {
 		encoding += ('"' + table[int] + '"' + (int < table.length ? ',' : ''));
 	}
 
@@ -1675,7 +1532,7 @@ function populateFacetsList(xmlData) {
 }
 function buildHierarchically(index, elem, hierarchicalIndex, intermediateIndex) {
 	var ancesterFound = false;
-	for ( var int = index.length - 1; int >= 0; int--) {
+	for (var int = index.length - 1; int >= 0; int--) {
 		var ancester = index[int];
 		if (elem.indexOf(ancester) == 0) {
 			index.splice(int, 1);
@@ -1762,7 +1619,7 @@ function addStaticFacetEntry(facetGroupName, facetGroup) {
 	var $facetContainerElement = $(document.createElement("ul"));
 	$groupElement.append($facetContainerElement);
 	$("#static-facets", $("#metadata-container")).append($groupElement);
-	for ( var i = 0; i < facetGroup.length; i++) {
+	for (var i = 0; i < facetGroup.length; i++) {
 		var facet = facetGroup[i];
 		var $facetElement = $(document.createElement("li"));
 		var $facetLinkElement = $(document.createElement("a"));
@@ -1829,7 +1686,7 @@ function addMetadataEntry(title, desc, metadataId, metadataVersion, restLink,
 
 	if ($hits && $hits.length > 0) {
 
-		for ( var i = 0; i < $hits.length; i++) {
+		for (var i = 0; i < $hits.length; i++) {
 			var $hitNode = $(document.createElement("p"));
 			$hitNode.addClass("snippet-presentation");
 			var $hit = $($hits[i]);
@@ -1858,11 +1715,9 @@ function _handleMetadataDeleteButtonClick(event) {
 		url : url,
 		headers : {
 			accept : "application/xml",
-			"If-Match" : etag,
-			authorization : nonce
+			"If-Match" : etag
 		},
 		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
 			switch (jqXHR.status) {
 			default:
 				alert("Une erreur a empêché la suppression de la ressource.");
@@ -1873,18 +1728,9 @@ function _handleMetadataDeleteButtonClick(event) {
 
 		},
 		success : function(data) {
-			nonce = extractAuthenticationHeader(response);
 			_triggerRequest()
 		}
 	});
-}
-var AUTHENTICATION_INFO_PATTERN = /nextnonce="([^"]+)"/;
-function extractAuthenticationHeader(response) {
-	var header = response.getResponseHeader('Authentification-Info');
-	var match = AUTHENTICATION_INFO_PATTERN.exec(header);
-	if (match.length == 0)
-		return "";
-	return match[1];
 }
 function _handleMetadataSelectButtonClick(event) {
 	selectedMetadataId = reduceId($(event.target).closest("li").attr(
@@ -1978,7 +1824,7 @@ function _populateSuggestionsList(xmlData) {
 		if ($.inArray(suggestion, suggestions) == -1)
 			suggestions.push(suggestion);
 	});
-	for ( var int = 0; int < suggestions.length; int++) {
+	for (var int = 0; int < suggestions.length; int++) {
 		_addItemToSuggestionsList(suggestions[int]);
 		if (int == suggestions.length - 1)
 			$("#suggestions", $("#metadata-container")).append(" ?")
@@ -2014,18 +1860,15 @@ function _handleOptimizeButtonClick(mdid, type) {
 		type : "POST",
 		url : metaMaintenanceUrl + "/optimization",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			prettyAlert("Erreur", "Echec de la requête d'optimisation :" + msg,
 					"error");
 		},
 		success : function() {
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			prettyAlert("Succès", "La requête d'optimisation a réussi");
 		}
 	});
@@ -2035,20 +1878,17 @@ function _handleDeleteAllButtonClick(mdid, type) {
 		type : "POST",
 		url : metaMaintenanceUrl + "/deletion",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			prettyAlert("Erreur", "Echec de la requête de vidage  :" + msg,
 					"error");
 			_triggerRequest();
 		},
 		success : function() {
 			prettyAlert("Succès", "La requête de vidage a réussi");
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			_triggerRequest();
 		}
 	});
@@ -2058,20 +1898,17 @@ function _handleRecoveryButtonClick(mdid, type) {
 		type : "POST",
 		url : metaMaintenanceUrl + "/recovery",
 		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
+			accept : "application/atom+xml"
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			prettyAlert("Erreur", "Echec de la requête de restauration  :"
 					+ msg, "error");
 			_triggerRequest();
 		},
 		success : function() {
 			prettyAlert("Succès", "La requête de restauration a réussi");
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			_triggerRequest();
 		}
 	});
@@ -2244,20 +2081,14 @@ function handleThumbsSuggestionSelection(event) {
 				+ "&src=" + encodeURIComponent(imageUrl),
 		headers : {
 			accept : "application/atom+xml",
-			"If-Match" : thumbEtag,
-			authorization : nonce
+			"If-Match" : thumbEtag
 		},
 		error : function(msg) {
-			nonce = extractAuthenticationHeader(response);
-			;
-			if (msg.status == 403)
-				showIdentificationFields(true);
 			prettyAlert("Pb d'autorisation", msg.responseText, "error")
 		},
 		success : function(result) {
 			waitForThumbs(false);
-			nonce = extractAuthenticationHeader(response);
-			;
+
 			thumbEtag = $(result).find("thumbs").attr("version");
 			defaultIcon = $(result).find("thumbs").find(
 					"thumb[status='default']").text();
@@ -2281,8 +2112,7 @@ function handleImageUpload() {
 					type : 'POST',
 					headers : {
 						accept : "application/atom+xml",
-						"If-Match" : thumbEtag,
-						authorization : nonce
+						"If-Match" : thumbEtag
 					},
 					xhr : function() { // custom xhr
 						myXhr = $.ajaxSettings.xhr();
@@ -2294,23 +2124,13 @@ function handleImageUpload() {
 						return myXhr;
 					},
 					success : function(data, textStatus, jqXHR) {
-						nonce = extractAuthenticationHeader(response);
-						;
 						handleImageUploadSuccess(data, textStatus, jqXHR);
 
 					},
 					error : function(jqXHR, textStatus, errorThrown) {
-						nonce = extractAuthenticationHeader(response);
-						;
-						switch (jqXHR.status) {
-						case 403:
-							showIdentificationFields(true);
-							break;
-						default:
-							prettyAlert("Erreur",
-									"Echec de l'envoi de l'image.", "error");
-							break;
-						}
+
+						prettyAlert("Erreur", "Echec de l'envoi de l'image.",
+								"error");
 
 					},
 					data : formData,
@@ -2345,271 +2165,4 @@ function waitForThumbs(bool) {
 	$("#thumbs-left-button").toggle(!bool);
 	$("#thumbs-preload").toggle(bool);
 	$("#thumbs-list").toggle(!bool);
-}
-function handleManifestUpload() {
-	$('#manifest_upload', $("#manifests-container")).change(function() {
-		if (selectedManifestId == "")
-			postNewManifest();
-		else
-			putManifestIntoSelectedResource();
-	});
-	showManifestProgressBar(false);
-
-}
-function putManifestIntoSelectedResource() {
-	showManifestProgressBar(true);
-	var etag = selectedManifestVersion;
-	var form = $('form#set_imsld_manifest', $("#manifests-container"));
-	var formData = new FormData($('form#set_imsld_manifest')[0]);
-	var response = $.ajax({
-		url : editManifestUrl + "/" + selectedManifestId,
-		type : 'PUT',
-		headers : {
-			accept : "application/atom+xml",
-			"If-Match" : etag,
-			authorization : nonce
-		},
-		xhr : function() { // custom xhr
-			myXhr = $.ajaxSettings.xhr();
-			if (myXhr.upload) { // check if upload
-				// property exists
-				myXhr.upload.addEventListener('progress',
-						manifestProgressHandlingFunction, false);
-			}
-			return myXhr;
-		},
-		success : function(data, textStatus, jqXHR) {
-			nonce = extractAuthenticationHeader(response);
-			handleManifestUploadSuccess(data, textStatus, jqXHR);
-		},
-		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
-			switch (jqXHR.status) {
-			case 403:
-				alert("Pb authentification.");
-				uiblocked = false;
-				showIdentificationFields(true);
-				break;
-			default:
-				alert("Une erreur a empêché l'ajout du fichier.");
-				uiblocked = false;
-				requestManifestList();
-				break;
-			}
-
-		},
-		data : formData,
-		cache : false,
-		contentType : false,
-		processData : false
-	});
-
-}
-function postNewManifest() {
-	showManifestProgressBar(true);
-	var form = $('form#set_imsld_manifest', $("#manifests-container"));
-	var formData = new FormData($('form#set_imsld_manifest')[0]);
-	var response = $.ajax({
-		url : editManifestUrl,
-		type : 'POST',
-		headers : {
-			accept : "application/atom+xml",
-			authorization : nonce
-		},
-		xhr : function() { // custom xhr
-			myXhr = $.ajaxSettings.xhr();
-			if (myXhr.upload) { // check if upload
-				// property exists
-				myXhr.upload.addEventListener('progress',
-						manifestProgressHandlingFunction, false);
-			}
-			return myXhr;
-		},
-		success : function() {
-			nonce = extractAuthenticationHeader(response);
-			handleManifestUploadSuccess();
-		},
-		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
-			switch (jqXHR.status) {
-			case 999:
-				alert("Ici ton message d'erreur.");
-				uiblocked = false;
-				requestManifestList();
-				break;
-			default:
-				alert("Une erreur a empêché l'ajout du fichier.");
-				uiblocked = false;
-				requestManifestList();
-				break;
-			}
-
-		},
-		data : formData,
-		cache : false,
-		contentType : false,
-		processData : false
-	});
-}
-function handleManifestUploadSuccess(data, textStatus, jqXHR) {
-	showManifestProgressBar(false);
-	prettyAlert("Manifest transféré",
-			"Le manifeste a été transféré sur le serveur");
-	requestManifestList();
-
-}
-function requestManifestList() {
-	$.ajax({
-		type : "GET",
-		url : packUrl,
-		headers : {
-		// accept : "application/atom+xml"
-		},
-		error : function(msg, a, b) {
-			prettyAlert("Erreur", msg.responseText, "error");
-		},
-		success : function(result) {
-			handleManifestListQueryResult(result);
-		}
-	});
-}
-function handleManifestListQueryResult(xmlData) {
-	selectedMetadataId = "";
-	populateManifestsList(xmlData);
-	updateSelectedManifestDisplay();
-}
-function populateManifestsList(xmlData) {
-	$("#manifests-list", $("#manifests-container")).empty();
-	$(xmlData).find("feed").children("entry").each(
-			function(index, elem) {
-				console.log(elem)
-				var urn = $(elem).find('id').text();
-				addManifestsEntry($(elem).find("title").text(), $(elem).find(
-						"id").text(), $(elem).children("updated").text(), $(
-						elem).find("link[type='text/html']").attr("href"), $(
-						elem).find("link[type='application/lom+xml']").attr(
-						"href"), $(
-								elem).find("link[type='application/lom+xml']").attr(
-								"href"));
-			});
-}
-function addManifestsEntry(title, manifestId, manifestVersion, restLink, metadataLink) {
-	restLink = restLink.replace(host, readHost);
-	var $manifestElement = $(document.createElement("li"));
-	var $titleElement = $(document.createElement("h4"));
-	$titleElement.text(title);
-	var $deleteButton = $(document.createElement("button"));
-	$deleteButton.addClass("manifest_delete_button");
-	$titleElement.append($deleteButton);
-	$deleteButton.button({
-		icons : {
-			primary : "ui-icon-trash"
-		},
-		text : false
-	})
-	$deleteButton.bind("click", handleManifestDeleteButtonClick);
-	$deleteButton.attr("title", "Supprimer ce manifeste");
-
-	var $selectButton = $(document.createElement("button"));
-	$selectButton.addClass("manifest_select_button");
-	$titleElement.append($selectButton);
-	$selectButton.button({
-		icons : {
-			primary : "ui-icon-pin-w"
-		},
-		text : false
-	})
-	$selectButton.bind("click", handleManifestSelectButtonClick);
-	$selectButton.attr("title", "Sélectionner ce manifeste");
-
-	$manifestElement.attr("data-mfid", manifestId);
-	$manifestElement.attr("data-version", manifestVersion);
-	$manifestElement.append($titleElement);
-	var $restUrlNode = $(document.createElement("p"));
-	var $restUrlLink = $(document.createElement("a")).attr("href", restLink)
-			.attr("target", "_blank").appendTo($restUrlNode);
-	$restUrlLink.text(restLink);
-	$manifestElement.append($restUrlNode);
-	var $lomfrUrlButton = $(document.createElement("a"));
-	$lomfrUrlButton.attr("href", metadataLink);
-	$lomfrUrlButton.attr("target", "_blank");
-	$restUrlNode.append($lomfrUrlButton);
-	$lomfrUrlButton.button({
-		icons : {
-			primary : "ui-icon-link"
-		},
-		text : false
-	})
-	$("#manifests-list", $("#manifests-container")).append($manifestElement);
-}
-
-function handleManifestSelectButtonClick(event) {
-	selectedManifestId = reduceId($(event.target).closest("li").attr(
-			"data-mfid"));
-	selectedManifestVersion = $(event.target).closest("li")
-			.attr("data-version");
-	updateSelectedManifestDisplay();
-	$(event.target).attr("checked", "checked");
-
-}
-function handleManifestDeleteButtonClick(event) {
-	var resid = reduceId($(event.target).closest("li").attr("data-mfid"));
-	var url = editManifestUrl + "/" + resid;
-	var etag = $(event.target).closest("li").attr("data-version");
-	var response = $.ajax({
-		type : "DELETE",
-		url : url,
-		headers : {
-			accept : "application/xml",
-			"If-Match" : etag,
-			authorization : nonce
-		},
-		error : function(jqXHR, textStatus, errorThrown) {
-			nonce = extractAuthenticationHeader(response);
-			switch (jqXHR.status) {
-			default:
-				alert("Une erreur a empêché la suppression de la ressource.");
-				uiblocked = false;
-				requestRessourceList();
-				break;
-			}
-
-		},
-		success : function(data) {
-			nonce = extractAuthenticationHeader(response);
-			requestManifestList()
-		}
-	});
-}
-function updateSelectedManifestDisplay() {
-	$("button.manifest_select_button", $("#manifests-container"))
-			.each(
-					function(index, elem) {
-						var id = $(elem).closest("li").attr("data-mfid");
-						$(elem).button("option", "disabled",
-								id == selectedManifestId);
-						$(elem)
-								.button(
-										"option",
-										"icons",
-										{
-											primary : (selectedManifestId != "" && id
-													.indexOf(selectedManifestId) >= 0) ? "ui-icon-pin-s"
-													: "ui-icon-pin-w"
-										});
-					})
-}
-function showManifestProgressBar(bool) {
-	if (bool)
-		$("#manifest_progress_bar", $("#manifests-container")).show();
-	else
-		$("#manifest_progress_bar", $("#manifests-container")).hide();
-}
-function manifestProgressHandlingFunction(e) {
-	if (e.lengthComputable) {
-		$('#manifest_progress_bar', $("#manifests-container")).attr({
-			value : e.loaded,
-			max : e.total
-		});
-	}
 }
