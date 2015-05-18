@@ -1,5 +1,5 @@
 var readHost = "http://apiscol:8080";
-var host = "http://apiscol:8080";
+
 var editUrl = host + "/edit";
 var metaMaintenanceUrl = editUrl + "/maintenance/meta";
 var transferUrl = editUrl + "/transfer";
@@ -1632,7 +1632,6 @@ function addStaticFacetEntry(facetGroupName, facetGroup) {
 }
 function addMetadataEntry(title, desc, metadataId, metadataVersion, restLink,
 		downloadLink, $hits) {
-	restLink = restLink.replace(host, readHost);
 	var $metadataElement = $(document.createElement("li"));
 	var $titleElement = $(document.createElement("h4"));
 	$titleElement.text(title);
@@ -2004,16 +2003,13 @@ function refreshMetadataListForThumbs(xmlData) {
 }
 function populateMetadataListForThumbs(xmlData) {
 	$("#thumb-mdid").empty();
-	$(xmlData).find("entry").each(
-			function(index, elem) {
-				var title = $(elem).find("title").text();
-				var url = $(elem).find("link[type='text/html']").attr("href")
-						.replace(host, readHost);
-				;
+	$(xmlData).find("entry").each(function(index, elem) {
+		var title = $(elem).find("title").text();
+		var url = $(elem).find("link[type='text/html']").attr("href");
 
-				addItemToMetadata(title, url);
+		addItemToMetadata(title, url);
 
-			});
+	});
 	$("#custom-image-input-container").hide();
 
 	refreshThumbsSuggestionsList();

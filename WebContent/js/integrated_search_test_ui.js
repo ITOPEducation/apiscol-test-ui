@@ -1,6 +1,3 @@
-var host = "http://apiscol:8080";
-host="http://dev-metaeduc.itop.local";
-
 var TRANSLATE = {
 	'lifecycle.status' : null,
 	'droits' : null,
