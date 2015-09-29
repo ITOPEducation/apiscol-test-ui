@@ -186,7 +186,6 @@ function populateMetadataList(xmlData) {
 	$("#metadata-list").empty();
 	$(xmlData).find("entry").each(
 			function(index, elem) {
-				console.log(elem)
 				var urn = $(elem).find('id').text();
 				var link = $(elem).find("link[rel='self'][type='text/html']")
 						.attr("href");
@@ -210,6 +209,8 @@ function addNotice($link, title) {
 }
 function addMetadataEntry(link, title, desc, thumb, metadataId,
 		metadataVersion, $hits) {
+	if (!metadataId || metadataId.match(/^\s*$/))
+		return;
 	var $metadataElement = $(document.createElement("div")).addClass(
 			"ui-helper-clearfix mini");
 	$metadataElement.attr("style", "clear:left")
