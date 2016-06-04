@@ -6,10 +6,11 @@ var TRANSLATE = {
 	'type de ressource' : null,
 	'langage' : null,
 	'contexte' : null,
-	'educational_level' : "Niveau éducatif",
-	'competency' : "Compétences",
+	'niveau éducatif détaillé' : "Niveau éducatif",
+	"domaine d'enseignement" : "Domaine d'enseignement",
+	'compétence' : "Compétences",
 	"enseignement" : "Programmes",
-	"discipline" : "discipline",
+	"champ disciplinaire" : "discipline",
 	"rights.copyrightandotherrestrictions" : "Copyright",
 	"rights.costs" : "Payant",
 	"educational.place" : "Lieu",
@@ -297,6 +298,8 @@ function populateFacetsList(xmlData) {
 								addDynamicFacetEntry(facetGroupIndex,
 										facetGroupName, $(elem2).attr(
 												"identifier"), $(elem2))
+							else
+								console.log(facetGroupIndex)
 						})
 
 			});
@@ -308,10 +311,12 @@ function populateFacetsList(xmlData) {
 				$(elem).find("apiscol\\:facet, facet").each(
 						function(index2, elem2) {
 							var count = $(elem2).attr("count");
+							var label = $(elem2).attr("title");
 							var value = $(elem2).text();
 							facetGroup.push({
 								count : count,
-								label : value
+								label : label,
+								value : value
 							});
 
 						})
@@ -396,7 +401,7 @@ function addStaticFacetEntry(facetGroupIndex, facetGroupName, facetGroup) {
 		var $facetElement = $(document.createElement("li"));
 		var $facetLinkElement = $(document.createElement("a"));
 		$facetLinkElement.bind("click", handleStaticFacetClic);
-		$facetLinkElement.attr("href", facetGroupIndex + "::" + facet.label);
+		$facetLinkElement.attr("href", facetGroupIndex + "::" + facet.value);
 		$facetLinkElement.text(facet.label + " (" + facet.count + ") ");
 		$facetElement.append($facetLinkElement);
 		$facetContainerElement.append($facetElement);
@@ -415,20 +420,22 @@ function mergeSynonimsAndTranslate(facetGroup) {
 				facetGroupTranslated[counter] = new Object();
 				facetGroupTranslated[counter].label = TRANSLATE[facetGroup[i].label];
 				facetGroupTranslated[counter].count = facetGroup[i].count;
+				facetGroupTranslated[counter].value = facetGroup[i].value;
 				counter++;
 			}
 		} else {
 			facetGroupTranslated[counter] = new Object();
 			facetGroupTranslated[counter].label = facetGroup[i].label;
+			facetGroupTranslated[counter].value = facetGroup[i].value;
 			facetGroupTranslated[counter].count = facetGroup[i].count;
 			counter++;
 		}
 	}
 	return facetGroupTranslated;
 }
-function indexInFacetGroup(label, facetGroup) {
+function indexInFacetGroup(value, facetGroup) {
 	for (var i = 0; i < facetGroup.length; i++) {
-		if (facetGroup[i].label == label)
+		if (facetGroup[i].value == value)
 			return i;
 
 	}
