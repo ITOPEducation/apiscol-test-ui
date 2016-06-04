@@ -6,11 +6,16 @@ var TRANSLATE = {
 	'type de ressource' : null,
 	'langage' : null,
 	'contexte' : null,
-	'niveau éducatif détaillé' : "Niveau éducatif",
-	"domaine d'enseignement" : "Domaine d'enseignement",
-	'compétence' : "Compétences",
-	"enseignement" : "Programmes",
-	"champ disciplinaire" : "discipline",
+	'http://data.education.fr/voc/scolomfr/concept/educational_level' : "Niveau éducatif",
+	"http://data.education.fr/voc/scolomfr/concept/accessibility_restrictions" : "Restrictions d'accessibilité",
+	"http://data.education.fr/voc/scolomfr/concept/scolomfr-voc-028-num-003" : "Domaine d'enseignement",
+	'http://data.education.fr/voc/scolomfr/concept/competency' : "Compétences",
+	"http://data.education.fr/voc/scolomfr/concept/scolomfr-voc-028-num-004" : "Programmes",
+	"http://data.education.fr/voc/scolomfr/concept/discipline" : "discipline",
+	"http://data.education.fr/voc/scolomfr/concept/educational_objective" : "Objectif pédagogique",
+	"http://data.education.fr/voc/scolomfr/concept/idea" : "Notion",
+	"http://data.education.fr/voc/scolomfr/concept/prerequisite" : "Pré-requis",
+	"http://data.education.fr/voc/scolomfr/concept/scolomfr-voc-028-num-011" : "Public cible détaillé",
 	"rights.copyrightandotherrestrictions" : "Copyright",
 	"rights.costs" : "Payant",
 	"educational.place" : "Lieu",
@@ -289,7 +294,7 @@ function populateFacetsList(xmlData) {
 	facetGroupRegistry = new Object();
 	$(xmlData).find("apiscol\\:dynamic-facets, dynamic-facets").each(
 			function(index, elem) {
-				var facetGroupIndex = $(elem).attr("name");
+				var facetGroupIndex = $(elem).attr("value");
 				facetGroupName = TRANSLATE[facetGroupIndex];
 				var facetGroup = new Object();
 				$(elem).find("apiscol\\:taxon, taxon").each(
@@ -354,7 +359,6 @@ function addDynamicFacetEntry(facetGroupIndex, facetGroupName, taxonName, group)
 }
 function buildLinkHierarchy(facetGroupIndex, facetGroupName, taxonName,
 		$parent, $data) {
-	console.log(facetGroupIndex, facetGroupName, taxonName, $parent, $data)
 	var $facetsListContainer = $(document.createElement("ul"));
 	$parent.append($facetsListContainer);
 	$data.children("apiscol\\:entry, entry").each(
