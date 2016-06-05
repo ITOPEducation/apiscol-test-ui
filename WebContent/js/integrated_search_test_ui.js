@@ -318,6 +318,9 @@ function populateFacetsList(xmlData) {
 							var count = $(elem2).attr("count");
 							var label = $(elem2).attr("title");
 							var value = $(elem2).text();
+							if (!label || label.match(/^\s*$/)) {
+								label = value;
+							}
 							facetGroup.push({
 								count : count,
 								label : label,
@@ -365,12 +368,16 @@ function buildLinkHierarchy(facetGroupIndex, facetGroupName, taxonName,
 			function(index, elem) {
 				var $facetElement = $(document.createElement("li"));
 				var $facetLinkElement = $(document.createElement("a"));
+				var identifier = $(elem).attr("identifier");
+				var label = $(elem).attr("label");
+				if (!label || label.match(/^\s*$/)) {
+					label = identifer;
+				}
 				$facetLinkElement.attr("href", facetGroupIndex + "::"
-						+ taxonName + "::" + $(elem).attr("identifier") + "::"
-						+ $(elem).attr("label"));
+						+ taxonName + "::" + identifier + "::" + label);
 				$facetLinkElement.bind("click", handleDynamicFacetClic);
-				$facetLinkElement.text($(elem).attr("label") + " ("
-						+ $(elem).attr("count") + ") ");
+				$facetLinkElement.text(label + " (" + $(elem).attr("count")
+						+ ") ");
 				$facetElement.append($facetLinkElement);
 				$facetsListContainer.append($facetElement);
 				buildLinkHierarchy(facetGroupIndex, facetGroupName, taxonName,
